@@ -19,6 +19,7 @@ try {
         ]
     );
 } catch (PDOException $e) {
+    error_log('CVMS database error: ' . $e->getMessage());
     http_response_code(500);
-    exit('Unable to connect to the database. Please check config/db.php and make sure MySQL is running.');
+    exit('Database connection failed. Check the cPanel error log.');
 }
