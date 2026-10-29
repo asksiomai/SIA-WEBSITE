@@ -3,11 +3,9 @@
 // XAMPP / Laragon default: user "root", empty password. Change here if yours differs.
 date_default_timezone_set('Asia/Manila');
 
-const DB_HOST = 'localhost';
-const DB_PORT = '3306';
-const DB_NAME = 'volunteer_management';
-const DB_USER = 'root';
-const DB_PASS = '';
+const DB_NAME = 'volufjvu_cvms_db';
+const DB_USER = 'volufjvu_cvmsuser';
+const DB_PASS = 'Jctbabyfucker23.';
 
 try {
     $pdo = new PDO(
