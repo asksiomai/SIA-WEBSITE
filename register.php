@@ -4,7 +4,7 @@ require __DIR__ . '/includes/auth.php';
 if (current_user()) redirect('dashboard.php');
 
 $errors = [];
-$f = ['first_name' => '', 'middle_name' => '', 'last_name' => '', 'email' => '', 'phone' => '', 'address' => ''];
+$f = ['first_name' => '', 'middle_name' => '', 'last_name' => '', 'email' => '', 'phone number' => '', 'address' => ''];
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     foreach ($f as $k => $_) $f[$k] = trim($_POST[$k] ?? '');
     $password = $_POST['password'] ?? '';
@@ -23,8 +23,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $errors[] = 'Email is already registered.';
         } else {
             try {
-                $pdo->prepare("INSERT INTO users (last_name, first_name, middle_name, email, password, role, phone, address) VALUES (?, ?, ?, ?, ?, 'volunteer', ?, ?)")
-                    ->execute([$f['last_name'], $f['first_name'], $f['middle_name'] ?: null, $f['email'], password_hash($password, PASSWORD_DEFAULT), $f['phone'] ?: null, $f['address'] ?: null]);
+                $pdo->prepare("INSERT INTO users (last_name, first_name, middle_name, email, password, role, phone number, address) VALUES (?, ?, ?, ?, ?, 'volunteer', ?, ?)")
+                    ->execute([$f['last_name'], $f['first_name'], $f['middle_name'] ?: null, $f['email'], password_hash($password, PASSWORD_DEFAULT), $f['phone number'] ?: null, $f['address'] ?: null]);
                 flash('success', 'Account created successfully. Please log in.');
                 redirect('login.php');
             } catch (PDOException $e) {
@@ -56,7 +56,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
           <div class="col-md-4"><label class="form-label">Middle name</label><input class="form-control" name="middle_name" value="<?= h($f['middle_name']) ?>"></div>
           <div class="col-md-4"><label class="form-label">Last name *</label><input class="form-control" name="last_name" value="<?= h($f['last_name']) ?>" required></div>
           <div class="col-md-6"><label class="form-label">Email (used to log in) *</label><input class="form-control" type="email" name="email" value="<?= h($f['email']) ?>" required></div>
-          <div class="col-md-6"><label class="form-label">Phone</label><input class="form-control" name="phone" value="<?= h($f['phone']) ?>"></div>
+          <div class="col-md-6"><label class="form-label">Phone number</label><input class="form-control" name="phone number" value="<?= h($f['phone number']) ?>"></div>
           <div class="col-12"><label class="form-label">Address</label><input class="form-control" name="address" value="<?= h($f['address']) ?>"></div>
           <div class="col-md-6"><label class="form-label">Password * <small class="text-muted">(min. 8 characters; symbols and spaces allowed)</small></label><input class="form-control" type="password" name="password" required></div>
           <div class="col-md-6"><label class="form-label">Confirm password *</label><input class="form-control" type="password" name="confirm" required></div>
