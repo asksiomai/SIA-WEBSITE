@@ -140,7 +140,7 @@ if (array_key_exists('email', $in)) {                          // profile sectio
     }
     $st = $pdo->prepare('SELECT COUNT(*) FROM users WHERE email = ? AND user_id <> ?'); $st->execute([$d['email'], $uid]);
     if ($st->fetchColumn() > 0) api_error('Email is already registered.', 409);
-    if ($new !== '' && strlen($new) < 8) api_error('New password must be at least 8 characters.', 422);
+    if ($new !== '' && ($pwError = password_error($new))) api_error('New password: ' . $pwError, 422);
 
     $pdo->prepare('UPDATE users SET first_name = ?, middle_name = ?, last_name = ?, email = ?, phone = ?, address = ? WHERE user_id = ?')
         ->execute([$d['first_name'], $d['middle_name'] ?: null, $d['last_name'], $d['email'], $d['phone'] ?: null, $d['address'] ?: null, $uid]);

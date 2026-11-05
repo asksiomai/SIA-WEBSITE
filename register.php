@@ -12,7 +12,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     if ($f['first_name'] === '' || $f['last_name'] === '') $errors[] = 'First name and last name are required.';
     if (!filter_var($f['email'], FILTER_VALIDATE_EMAIL)) $errors[] = 'Please enter a valid email address.';
-    if (strlen($password) < 8) $errors[] = 'Password must be at least 8 characters.';
+    if ($pwError = password_error($password)) $errors[] = $pwError;    // letters, numbers, symbols and spaces are all allowed
     if ($password !== $confirm) $errors[] = 'Passwords do not match.';
     if (empty($_POST['agree'])) $errors[] = 'You must agree to the Terms & Privacy Policy to create an account.';
 
@@ -58,7 +58,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
           <div class="col-md-6"><label class="form-label">Email (used to log in) *</label><input class="form-control" type="email" name="email" value="<?= h($f['email']) ?>" required></div>
           <div class="col-md-6"><label class="form-label">Phone</label><input class="form-control" name="phone" value="<?= h($f['phone']) ?>"></div>
           <div class="col-12"><label class="form-label">Address</label><input class="form-control" name="address" value="<?= h($f['address']) ?>"></div>
-          <div class="col-md-6"><label class="form-label">Password * <small class="text-muted">(min. 8 characters)</small></label><input class="form-control" type="password" name="password" required></div>
+          <div class="col-md-6"><label class="form-label">Password * <small class="text-muted">(min. 8 characters; symbols and spaces allowed)</small></label><input class="form-control" type="password" name="password" required></div>
           <div class="col-md-6"><label class="form-label">Confirm password *</label><input class="form-control" type="password" name="confirm" required></div>
         </div>
         <div class="form-check mt-3">

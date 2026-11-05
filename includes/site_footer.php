@@ -1,4 +1,9 @@
-<?php // Shared site footer: legal links + copyright. Included by includes/footer.php and the public pages. ?>
+<?php
+// Shared site footer: legal links + copyright. Included by includes/footer.php and the public pages.
+// It prints only once per page, even if a page happens to include it twice.
+if (defined('CVMS_FOOTER_PRINTED')) return;
+define('CVMS_FOOTER_PRINTED', true);
+?>
 <footer class="site-footer">
   <nav class="site-footer-links">
     <a href="terms.php#privacy">Privacy Policy</a>

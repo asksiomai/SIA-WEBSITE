@@ -7,7 +7,7 @@ $a = find_activity($pdo, $u, $_GET['activity_id'] ?? 0);
 $pageTitle = 'AI Volunteer Matching';
 $pageSub = $a ? $a['activity_name'] . ' · ' . $a['activity_date'] : 'Choose an activity to see recommended volunteers.';
 require __DIR__ . '/includes/header.php';
-if (!$a) { activity_picker(visible_activities($pdo, $u), 'matching.php', 'Matching uses the activity requirements, so add requirements first.'); require __DIR__ . '/includes/footer.php'; exit; }
+if (!$a) { activity_picker(visible_activities($pdo, $u), 'matching.php', 'Matching uses the required skills set on each activity.'); require __DIR__ . '/includes/footer.php'; exit; }
 
 $st = $pdo->prepare('SELECT r.required_level, s.skill_name FROM activity_requirements r JOIN skills s ON s.skill_id = r.skill_id WHERE r.activity_id = ?');
 $st->execute([$a['activity_id']]);
@@ -20,7 +20,7 @@ $reqs = $st->fetchAll();
   <div>
     <div class="text-muted small text-uppercase">Activity requirements</div>
     <?php foreach ($reqs as $r): ?><span class="badge text-bg-light border me-1"><?= h($r['skill_name']) ?> · <?= h($r['required_level']) ?></span><?php endforeach; ?>
-    <?php if (!$reqs): ?><span class="text-muted">None yet — <a href="requirements.php?activity_id=<?= (int)$a['activity_id'] ?>">add requirements</a> for better matching.</span><?php endif; ?>
+    <?php if (!$reqs): ?><span class="text-muted">None yet — <a href="activities.php">edit the activity</a> and add its required skills for better matching.</span><?php endif; ?>
   </div>
   <div class="d-flex gap-2">
     <button id="genBtn" class="btn btn-primary"><i class="bi bi-stars"></i> Generate AI Matching</button>

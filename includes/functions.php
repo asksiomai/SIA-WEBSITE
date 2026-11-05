@@ -23,6 +23,24 @@ function role_label($role)
 {
     return ['super_admin' => 'Super Admin', 'organizer' => 'Admin / Organizer', 'volunteer' => 'Volunteer'][$role] ?? $role;
 }
+// Adds ?v=<last modified time> to a CSS/JS path so browsers load the newest file after an update.
+function asset($path)
+{
+    $file = __DIR__ . '/../' . $path;
+    return $path . (is_file($file) ? '?v=' . filemtime($file) : '');
+}
+// One password rule for registration and "change password": at least 8 characters, and not only spaces.
+// Letters, numbers, symbols and spaces are all allowed. The password is never trimmed or changed.
+function password_error($password)
+{
+    $password = (string) $password;
+    $length = function_exists('mb_strlen') ? mb_strlen($password, 'UTF-8') : strlen($password);
+    if ($length < 8)
+        return 'Password must be at least 8 characters.';
+    if (trim($password) === '')       // only used for this check; the password itself is not trimmed
+        return 'Password cannot be made of spaces only.';
+    return null;
+}
 function csrf_token()
 {
     if (empty($_SESSION['csrf']))
@@ -52,8 +70,8 @@ function menu_for($role)
         return [
             ['Manage Volunteers', 'volunteers.php', 'bi-people', 'See registered volunteers, their skills, interests and availability.'],
             ['Manage Skills', 'skills.php', 'bi-tools', 'Maintain the list of skills used by volunteers and activities.'],
-            ['Create Activities', 'activities.php', 'bi-calendar-plus', 'Create community activities.'],
-            ['Add Requirements', 'requirements.php', 'bi-list-check', 'Set the skills and levels each activity needs.'],
+            ['See Activities', 'see_activities.php', 'bi-calendar-event', 'View all community activities and their details.'],
+            ['Create Activities', 'activities.php', 'bi-calendar-plus', 'Create community activities and set the skills each one requires.'],
             ['Generate AI Matching', 'matching.php', 'bi-stars', 'Get recommended volunteers with compatibility scores.'],
             ['Select & Assign Volunteer', 'assign.php', 'bi-person-check', 'Review recommendations, then assign volunteers and roles.'],
             ['Manage Attendance', 'attendance.php', 'bi-clipboard-check', 'Record check-in, check-out and hours rendered.'],
@@ -64,7 +82,9 @@ function menu_for($role)
         ['Add Skills', 'my_skills.php', 'bi-patch-plus', 'Add your skills and proficiency levels.'],
         ['Set Interests', 'interests.php', 'bi-heart', 'Tell us your interests and when you are available.'],
         ['View Activities', 'my_activities.php', 'bi-calendar-event', 'Browse community activities and their requirements.'],
+        ['AI Recommendations', 'my_recommendations.php', 'bi-stars', 'Upcoming activities that match your skills.'],
         ['View Volunteer Hours', 'my_hours.php', 'bi-clock-history', 'Your hours and participation history.'],
+        ['My Achievements', 'my_achievements.php', 'bi-award', 'Badges earned from your completed volunteer hours.'],
     ];
 }
 
