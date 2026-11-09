@@ -56,7 +56,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
           <div class="col-md-4"><label class="form-label">Middle name</label><input class="form-control" name="middle_name" value="<?= h($f['middle_name']) ?>"></div>
           <div class="col-md-4"><label class="form-label">Last name *</label><input class="form-control" name="last_name" value="<?= h($f['last_name']) ?>" required></div>
           <div class="col-md-6"><label class="form-label">Email (used to log in) *</label><input class="form-control" type="email" name="email" value="<?= h($f['email']) ?>" required></div>
-          <div class="col-md-6"><label class="form-label">Phone</label><input class="form-control" name="phone" value="<?= h($f['phone']) ?>"></div>
+          <div class="col-md-6"><label class="form-label">Contact number</label><input class="form-control" name="phone" value="<?= h($f['phone']) ?>"></div>
           <div class="col-12"><label class="form-label">Address</label><input class="form-control" name="address" value="<?= h($f['address']) ?>"></div>
           <div class="col-md-6"><label class="form-label">Password * <small class="text-muted">(min. 8 characters; symbols and spaces allowed)</small></label><input class="form-control" type="password" name="password" required></div>
           <div class="col-md-6"><label class="form-label">Confirm password *</label><input class="form-control" type="password" name="confirm" required></div>
