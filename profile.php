@@ -15,7 +15,7 @@ require __DIR__ . '/includes/header.php';
     <div class="col-md-4"><label class="form-label">Middle name</label><input class="form-control" name="middle_name" maxlength="50"></div>
     <div class="col-md-4"><label class="form-label">Last name *</label><input class="form-control" name="last_name" maxlength="50" required></div>
     <div class="col-md-6"><label class="form-label">Email (login) *</label><input class="form-control" type="email" name="email" maxlength="100" required></div>
-    <div class="col-md-6"><label class="form-label">Phone number</label><input class="form-control" name="phone number" maxlength="20"></div>
+    <div class="col-md-6"><label class="form-label">Phone</label><input class="form-control" name="phone" maxlength="20"></div>
     <div class="col-12"><label class="form-label">Address</label><input class="form-control" name="address" maxlength="255"></div>
     <div class="col-md-6"><label class="form-label">New password <small class="text-muted">(leave blank to keep current)</small></label><input class="form-control" type="password" name="new_password" autocomplete="new-password"></div>
   </div>

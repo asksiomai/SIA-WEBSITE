@@ -1,25 +1,24 @@
-<?php
-// MANAGE PROFILE (volunteer): updates the volunteer's own row in users.
-// Loaded and saved through the REST API: GET api/volunteers.php?me=1 and PUT api/volunteers.php (assets/js/profile.js).
-require __DIR__ . '/includes/auth.php';
-$u = require_role(['volunteer']);
+// Manage Profile (volunteer) -> GET api/volunteers.php?me=1 (fill form), PUT api/volunteers.php (save)
+(function () {
+  const { api, flash } = window.CVMS;
+  const form = document.getElementById('profileForm');
+  const FIELDS = ['first_name', 'middle_name', 'last_name', 'email', 'phone', 'address'];
 
-$pageTitle = 'Manage Profile';
-$pageSub = 'Your personal and contact information.';
-require __DIR__ . '/includes/header.php';
-?>
-<div class="card section-card"><div class="card-body">
-<form id="profileForm"><fieldset disabled>
-  <div class="row g-3">
-    <div class="col-md-4"><label class="form-label">First name *</label><input class="form-control" name="first_name" maxlength="50" required></div>
-    <div class="col-md-4"><label class="form-label">Middle name</label><input class="form-control" name="middle_name" maxlength="50"></div>
-    <div class="col-md-4"><label class="form-label">Last name *</label><input class="form-control" name="last_name" maxlength="50" required></div>
-    <div class="col-md-6"><label class="form-label">Email (login) *</label><input class="form-control" type="email" name="email" maxlength="100" required></div>
-    <div class="col-md-6"><label class="form-label">Phone number</label><input class="form-control" name="phone number" maxlength="20"></div>
-    <div class="col-12"><label class="form-label">Address</label><input class="form-control" name="address" maxlength="255"></div>
-    <div class="col-md-6"><label class="form-label">New password <small class="text-muted">(leave blank to keep current)</small></label><input class="form-control" type="password" name="new_password" autocomplete="new-password"></div>
-  </div>
-  <button class="btn btn-primary mt-4" type="submit">Save Profile</button>
-</fieldset></form></div></div>
-<?php $extraScript = '<script src="assets/js/profile.js"></script>'; ?>
-<?php require __DIR__ . '/includes/footer.php'; ?>
+  function fill(v) { FIELDS.forEach(function (k) { form.elements[k].value = v[k] || ''; }); form.elements.new_password.value = ''; }
+
+  api('api/volunteers.php?me=1').then(function (d) { fill(d.volunteer); form.querySelector('fieldset').disabled = false; })
+    .catch(function (e) { flash('danger', e.message); });
+
+  form.addEventListener('submit', async function (e) {
+    e.preventDefault();
+    const body = {}; FIELDS.concat(['new_password']).forEach(function (k) { body[k] = form.elements[k].value; });
+    const btn = form.querySelector('button[type=submit]'); btn.disabled = true;
+    try {
+      const d = await api('api/volunteers.php', { method: 'PUT', body: body });
+      fill(d.volunteer);
+      const name = document.querySelector('.topbar .fw-semibold'); if (name) name.textContent = d.volunteer.full_name;
+      flash('success', 'Profile updated successfully.');
+    } catch (err) { flash('danger', err.message); }
+    btn.disabled = false;
+  });
+})();
