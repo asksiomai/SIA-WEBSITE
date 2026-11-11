@@ -49,11 +49,106 @@
     return n.getFullYear() + '-' + String(n.getMonth() + 1).padStart(2, '0') + '-' + String(n.getDate()).padStart(2, '0');
   };
 
-  // 'Past' | 'Today' | 'Upcoming' | 'No date'
+  // 'Past' | 'Today' | 'Ongoing' (multi-day, already started) | 'Upcoming' | 'No date'
   CVMS.activityState = function (a) {
     if (!a.activity_date) return 'No date';
     const t = CVMS.today();
-    return a.activity_date < t ? 'Past' : (a.activity_date === t ? 'Today' : 'Upcoming');
+    const end = a.end_date && a.end_date >= a.activity_date ? a.end_date : a.activity_date;
+    if (end < t) return 'Past';
+    if (a.activity_date > t) return 'Upcoming';
+    return a.activity_date === t ? 'Today' : 'Ongoing';
+  };
+
+  // ---- Schedule: start date (activity_date), end date, start time, end time ----
+  const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+  function ymd(iso) { const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(iso || ''); return m ? { y: +m[1], m: +m[2] - 1, d: +m[3] } : null; }
+
+  // "November 15, 2026" / "November 15–17, 2026" / "November 30 – December 2, 2026" / across two years.
+  // Older activities without an end date are shown as one day.
+  CVMS.fmtDateRange = function (startIso, endIso) {
+    const s = ymd(startIso);
+    if (!s) return 'No date';
+    const e = ymd(endIso);
+    const one = MONTHS[s.m] + ' ' + s.d + ', ' + s.y;
+    if (!e || (endIso <= startIso)) return one;
+    if (e.y === s.y && e.m === s.m) return MONTHS[s.m] + ' ' + s.d + '–' + e.d + ', ' + s.y;
+    if (e.y === s.y) return MONTHS[s.m] + ' ' + s.d + ' – ' + MONTHS[e.m] + ' ' + e.d + ', ' + s.y;
+    return one + ' – ' + MONTHS[e.m] + ' ' + e.d + ', ' + e.y;
+  };
+
+  // "HH:MM" (or HH:MM:SS) -> "8:00 AM". Returns '' when empty.
+  CVMS.fmtClock = function (t) {
+    const m = /^(\d{1,2}):(\d{2})/.exec(t || '');
+    if (!m) return '';
+    const h = +m[1];
+    return ((h % 12) || 12) + ':' + m[2] + ' ' + (h < 12 ? 'AM' : 'PM');
+  };
+  CVMS.fmtTimeRange = function (startT, endT) {
+    const a = CVMS.fmtClock(startT), b = CVMS.fmtClock(endT);
+    return a && b ? a + ' – ' + b : (a || b || 'Time not set');
+  };
+  CVMS.dateText = function (a) { return CVMS.fmtDateRange(a.activity_date, a.end_date); };
+  CVMS.timeText = function (a) { return CVMS.fmtTimeRange(a.start_time, a.end_time); };
+
+  // ---- Sorting (Activities pages). Works on the list the API already returned: nothing is changed in the database. ----
+  CVMS.SORT_OPTIONS = [
+    ['default', 'Default order'],
+    ['name_asc', 'Activity Name (A–Z)'],
+    ['name_desc', 'Activity Name (Z–A)'],
+    ['date_asc', 'Start Date (Soonest First)'],
+    ['date_desc', 'Start Date (Latest First)'],
+    ['skill_az', 'Required Skills (A–Z)'],
+    ['skill_most', 'Most Required Skills'],
+    ['skill_fewest', 'Fewest Required Skills']
+  ];
+  const lower = function (s) { return String(s == null ? '' : s).toLowerCase(); };
+  const text = function (x, y) { const a = lower(x), b = lower(y); return a < b ? -1 : (a > b ? 1 : 0); };
+
+  // Number of DISTINCT required skills (several level records of one skill still count once).
+  CVMS.skillCount = function (a) {
+    const seen = {};
+    (a.requirements || []).forEach(function (r) { seen[r.skill_id != null ? 'id' + r.skill_id : 'n' + lower(r.skill_name)] = 1; });
+    return Object.keys(seen).length;
+  };
+  // Alphabetically first required skill name, or null when the activity has none.
+  CVMS.firstSkill = function (a) {
+    const names = (a.requirements || []).map(function (r) { return r.skill_name; }).sort(text);
+    return names.length ? names[0] : null;
+  };
+  CVMS.sortActivities = function (list, mode) {
+    const items = list.map(function (a, i) { return { a: a, i: i }; });
+    const byName = function (x, y) { return text(x.a.activity_name, y.a.activity_name); };
+    // start date, then start time (activities without a time come last that day), then end date
+    const dateKey = function (a) { return (a.activity_date || '9999-99-99') + ' ' + (a.start_time || '99:99') + ' ' + (a.end_date || a.activity_date || ''); };
+    const byDate = function (x, y) { const p = dateKey(x.a), q = dateKey(y.a); return p < q ? -1 : (p > q ? 1 : 0); };
+    const cmp = {
+      name_asc: function (x, y) { return byName(x, y); },
+      name_desc: function (x, y) { return -byName(x, y); },
+      date_asc: function (x, y) { return byDate(x, y) || byName(x, y); },
+      date_desc: function (x, y) {
+        if (!x.a.activity_date || !y.a.activity_date) return byDate(x, y);   // activities without a date stay last
+        return -byDate(x, y) || byName(x, y);
+      },
+      skill_az: function (x, y) {
+        const p = CVMS.firstSkill(x.a), q = CVMS.firstSkill(y.a);
+        if (p === null && q === null) return byName(x, y);
+        if (p === null) return 1;                                           // no required skills: after the ones with skills
+        if (q === null) return -1;
+        return text(p, q) || byName(x, y);
+      },
+      skill_most: function (x, y) { return (CVMS.skillCount(y.a) - CVMS.skillCount(x.a)) || byName(x, y); },
+      skill_fewest: function (x, y) { return (CVMS.skillCount(x.a) - CVMS.skillCount(y.a)) || byName(x, y); }
+    }[mode];
+    if (cmp) items.sort(function (x, y) { return cmp(x, y) || (x.i - y.i); });   // equal items keep the server order
+    return items.map(function (it) { return it.a; });
+  };
+
+  // Puts the "Sort by" drop-down into $el. onChange(mode) is called when the choice changes.
+  CVMS.mountSort = function ($el, onChange) {
+    $el.innerHTML = '<div class="d-flex align-items-center gap-2 mb-3 sort-bar"><label class="form-label small text-muted mb-0" for="actSortSelect">Sort by</label>' +
+      '<select class="form-select form-select-sm w-auto" id="actSortSelect">' +
+      CVMS.SORT_OPTIONS.map(function (o) { return '<option value="' + o[0] + '">' + o[1] + '</option>'; }).join('') + '</select></div>';
+    $el.querySelector('select').addEventListener('change', function () { onChange(this.value); });
   };
 
   // Long, readable date (e.g. "Saturday, October 17, 2026") without time-zone shifts.
@@ -73,7 +168,8 @@
   CVMS.activityCardHtml = function (a, badge, slotsText) {
     return '<div class="col-lg-6"><div class="card h-100 act-card" role="button" tabindex="0" data-id="' + a.activity_id + '" aria-label="View details of ' + CVMS.esc(a.activity_name) + '"><div class="card-body">' +
       '<div class="d-flex justify-content-between align-items-start gap-2"><h2 class="h6 mb-1">' + CVMS.esc(a.activity_name) + '</h2>' + (badge || '') + '</div>' +
-      '<div class="small text-muted mb-2"><i class="bi bi-calendar-event"></i> ' + CVMS.esc(a.activity_date || 'No date') +
+      '<div class="small text-muted mb-2"><i class="bi bi-calendar-event"></i> ' + CVMS.esc(CVMS.dateText(a)) +
+      ' &nbsp; <i class="bi bi-clock"></i> ' + CVMS.esc(CVMS.timeText(a)) +
       ' &nbsp; <i class="bi bi-geo-alt"></i> ' + CVMS.esc(a.location || 'No location') + ' &nbsp; <i class="bi bi-people"></i> ' + CVMS.esc(slotsText) + '</div>' +
       (a.created_by_name ? '<div class="small text-muted mb-2">Created by ' + CVMS.esc(a.created_by_name) + '</div>' : '') +
       '<p class="small mb-2">' + CVMS.esc(a.description || '') + '</p>' + CVMS.skillBadges(a.requirements) + '</div></div></div>';
@@ -94,9 +190,10 @@
   // Full activity details as HTML. $rows = optional extra [label, text] pairs (all text is escaped).
   CVMS.activityDetailsHtml = function (a, rows) {
     const state = CVMS.activityState(a);
-    const stateBadge = { Past: 'text-bg-secondary', Today: 'text-bg-warning', Upcoming: 'text-bg-success' }[state] || 'text-bg-light';
+    const stateBadge = { Past: 'text-bg-secondary', Today: 'text-bg-warning', Ongoing: 'text-bg-warning', Upcoming: 'text-bg-success' }[state] || 'text-bg-light';
     const info = [
-      ['Date', CVMS.esc(CVMS.fmtDate(a.activity_date))],
+      ['Date', CVMS.esc(CVMS.dateText(a))],
+      ['Time', CVMS.esc(CVMS.timeText(a))],
       ['Status', '<span class="badge ' + stateBadge + '">' + state + '</span>'],
       ['Location', CVMS.esc(a.location || 'No location given')],
       ['Volunteers', CVMS.esc(a.taken + ' of ' + a.max_volunteers + ' slots filled')]

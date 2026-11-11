@@ -6,7 +6,7 @@ const DB_HOST = 'localhost';
 const DB_PORT = '3306';
 const DB_NAME = 'volufjvu_cvms_db';
 const DB_USER = 'volufjvu_cvmsuser';
-const DB_PASS = 'Jctbabyfucker23.';
+const DB_PASS = 'PUT_YOUR_NEW_DATABASE_PASSWORD_HERE';
 
 try {
     $pdo = new PDO(

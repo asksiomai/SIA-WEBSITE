@@ -25,11 +25,11 @@
           '</div>'
         : '<span class="text-muted small">View only</span>';
       return '<tr><td class="fw-semibold">' + esc(v.full_name) + '</td><td>' + esc(v.email) + '</td><td>' + esc(v.phone || '—') + '</td>' +
-             '<td>' + esc(v.interests || '—') + '</td><td>' + esc(v.availability || '—') + '</td><td class="small">' + esc(skills || '—') + '</td>' +
+             '<td>' + esc(v.interests || '—') + '</td><td>' + esc(v.availability || '—') + '</td><td class="small">' + esc(skills || '—') + '</td><td class="small">' + esc(v.other_skills || '—') + '</td>' +
              '<td><span class="role-pill">Volunteer</span></td><td class="text-end text-nowrap">' + actions + '</td></tr>';
     }).join('');
-    box.innerHTML = '<table class="table table-hover align-middle"><thead><tr><th>Name</th><th>Email</th><th>Phone</th><th>Interests</th><th>Availability</th><th>Skills</th><th>Role</th><th class="text-end">Actions</th></tr></thead><tbody>' +
-      (rows || '<tr><td colspan="8"><div class="empty">No volunteers found.</div></td></tr>') + '</tbody></table>';
+    box.innerHTML = '<table class="table table-hover align-middle"><thead><tr><th>Name</th><th>Email</th><th>Phone</th><th>Interests</th><th>Availability</th><th>Skills</th><th>Other skills</th><th>Role</th><th class="text-end">Actions</th></tr></thead><tbody>' +
+      (rows || '<tr><td colspan="9"><div class="empty">No volunteers found.</div></td></tr>') + '</tbody></table>';
   }
 
   // Role dropdown -> confirm -> PUT (same account, only users.role changes)

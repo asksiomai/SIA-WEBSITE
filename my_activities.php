@@ -8,6 +8,7 @@ $pageTitle = 'View Activities';
 $pageSub = 'Community activities and the skills they need. Organizers choose and assign volunteers.';
 require __DIR__ . '/includes/header.php';
 ?>
+<div id="actSort"></div>
 <div class="row g-3" id="actCards"><div class="col-12"><div class="empty">Loading…</div></div></div>
 <?php $extraScript = '<script src="' . h(asset('assets/js/my_activities.js')) . '"></script>'; ?>
 <?php require __DIR__ . '/includes/footer.php'; ?>

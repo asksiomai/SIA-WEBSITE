@@ -7,6 +7,8 @@
 4. Optional demo data: import `database_seed_demo.sql` (rows only; the schema is untouched).
 5. Open `http://localhost/cvms/`.
 
+**Before using this version on an existing database, run `migrations/001_schedule_and_other_skills.sql`** (back up first; see the comments inside the file).
+
 Demo logins (password `password123`): superadmin@cvms.local, organizer@cvms.local, juan@cvms.local, ana@cvms.local, mark@cvms.local, carla@cvms.local, paolo@cvms.local.
 
 Without the demo data there is no Super Admin: register a volunteer, then in phpMyAdmin set that row's `users.role` to `super_admin` once.
@@ -17,6 +19,9 @@ Without the demo data there is no Super Admin: register a volunteer, then in php
 - AI matching: `includes/matching.php` (score 60 skills + 15 interests + 10 availability + 15 experience), `api/recommendations.php`, `matching.php`
 - Activities (with their required skills in ONE form): `activities.php` · Organizer "See Activities" (read only, all activities): `see_activities.php`
 - Volunteer extras: AI Recommendations `my_recommendations.php` (same matching formula, read only) · Achievements `my_achievements.php` (badges calculated from real attendance)
+- Passwords: 8+ characters, only letters, numbers and periods (`^[A-Za-z0-9.]{8,}$`), checked in the browser and on the server (`password_error()` in `includes/functions.php`). Login never trims or changes the typed password, so older accounts still work.
+- Activity schedule: `activity_date` is the Start date; `end_date`, `start_time`, `end_time` were added (all required in Create / Edit Activity). Older activities show "Time not set" until edited. Sorting on the activity pages is done in the browser (`CVMS.sortActivities` in `assets/js/app.js`).
+- Volunteer "Other Skills" (`users.other_skills`, free text on Manage Profile, shown to organizers in Manage Volunteers; NOT used by AI matching).
 - Assign / cancel: `assign.php` · Attendance: `attendance.php` · Reports: `reports.php`
 
 ## REST-style API (all endpoints need a login session; the CSRF token is sent in the `X-CSRF-Token` header; no password is ever returned)

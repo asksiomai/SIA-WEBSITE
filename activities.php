@@ -19,10 +19,13 @@ $skills = $pdo->query('SELECT skill_id, skill_name FROM skills ORDER BY skill_na
 
 function activity_fields(array $skills) { ?>
   <div class="row g-3">
-    <div class="col-md-6"><label class="form-label">Activity name *</label><input class="form-control" name="activity_name" maxlength="150" required></div>
-    <div class="col-md-3"><label class="form-label">Date *</label><input class="form-control" type="date" name="activity_date" required></div>
-    <div class="col-md-3"><label class="form-label">Max volunteers *</label><input class="form-control" type="number" min="1" name="max_volunteers" required></div>
-    <div class="col-md-12"><label class="form-label">Location</label><input class="form-control" name="location" maxlength="255"></div>
+    <div class="col-12"><label class="form-label">Activity name *</label><input class="form-control" name="activity_name" maxlength="150" required></div>
+    <div class="col-md-3 col-6"><label class="form-label">Start date *</label><input class="form-control" type="date" name="activity_date" required></div>
+    <div class="col-md-3 col-6"><label class="form-label">End date *</label><input class="form-control" type="date" name="end_date" required></div>
+    <div class="col-md-3 col-6"><label class="form-label">Start time *</label><input class="form-control" type="time" name="start_time" required></div>
+    <div class="col-md-3 col-6"><label class="form-label">End time *</label><input class="form-control" type="time" name="end_time" required></div>
+    <div class="col-md-4"><label class="form-label">Max volunteers *</label><input class="form-control" type="number" min="1" name="max_volunteers" required></div>
+    <div class="col-md-8"><label class="form-label">Location</label><input class="form-control" name="location" maxlength="255"></div>
     <div class="col-12"><label class="form-label">Description</label><textarea class="form-control" name="description" rows="3"></textarea></div>
     <div class="col-12">
       <label class="form-label">Required skills <small class="text-muted">(used by AI matching)</small></label>
@@ -44,6 +47,7 @@ function activity_fields(array $skills) { ?>
   </form>
 </div></div>
 
+<div id="actSort"></div>
 <div class="card section-card"><div class="table-responsive" id="actTable" data-sa="<?= $isSA ? '1' : '0' ?>" data-skills="<?= h(json_encode($skills)) ?>"><div class="empty">Loading…</div></div></div>
 
 <div class="modal fade text-start" id="editModal" tabindex="-1"><div class="modal-dialog modal-lg"><form id="editForm" class="modal-content">

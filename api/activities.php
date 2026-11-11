@@ -20,14 +20,24 @@ function activity_input() {
     $d = [
         'name' => trim((string)($in['activity_name'] ?? '')),
         'desc' => trim((string)($in['description'] ?? '')),
-        'date' => trim((string)($in['activity_date'] ?? '')),
+        'date' => trim((string)($in['activity_date'] ?? '')),     // start date (the existing activity_date column)
+        'end'  => trim((string)($in['end_date'] ?? '')),
+        'st'   => trim((string)($in['start_time'] ?? '')),
+        'et'   => trim((string)($in['end_time'] ?? '')),
         'loc'  => trim((string)($in['location'] ?? '')),
         'max'  => (int)($in['max_volunteers'] ?? 0),
     ];
     if ($d['name'] === '') api_error('Activity name is required.', 422);
     if (strlen($d['name']) > 150) api_error('Activity name is too long (150 characters max).', 422);
     if (strlen($d['loc']) > 255) api_error('Location is too long (255 characters max).', 422);
-    if (!valid_date($d['date'])) api_error('Please choose a valid activity date.', 422);
+    if (!valid_date($d['date'])) api_error('Please choose a valid start date.', 422);
+    if (!valid_date($d['end'])) api_error('Please choose a valid end date.', 422);
+    if ($d['end'] < $d['date']) api_error('The end date cannot be earlier than the start date.', 422);
+    if (!valid_time($d['st'])) api_error('Please enter a valid start time.', 422);
+    if (!valid_time($d['et'])) api_error('Please enter a valid end time.', 422);
+    if (strlen($d['st']) === 5) $d['st'] .= ':00';                // HH:MM -> HH:MM:SS (MySQL TIME)
+    if (strlen($d['et']) === 5) $d['et'] .= ':00';
+    if ($d['end'] === $d['date'] && $d['et'] <= $d['st']) api_error('For a one-day activity, the end time must be later than the start time.', 422);
     if ($d['max'] < 1) api_error('Maximum volunteers must be at least 1.', 422);
     return $d;
 }
@@ -85,7 +95,7 @@ function save_requirements(PDO $pdo, $activity_id, array $reqs) {
 function load_activities(PDO $pdo, array $u, $one = 0, $all = false) {
     $volunteer = $u['role'] === 'volunteer';
     $sql = "SELECT a.*, CONCAT(cu.first_name, ' ', cu.last_name) AS created_by_name,
-                   (SELECT COUNT(*) FROM activity_requirements r WHERE r.activity_id = a.activity_id) AS req_count,
+                   (SELECT COUNT(DISTINCT r.skill_id) FROM activity_requirements r WHERE r.activity_id = a.activity_id) AS req_count,
                    (SELECT COUNT(*) FROM assignments s WHERE s.activity_id = a.activity_id AND s.assignment_status IN ('Assigned','Completed')) AS taken";
     $params = [];
     if ($volunteer) {
@@ -117,7 +127,10 @@ function load_activities(PDO $pdo, array $u, $one = 0, $all = false) {
             'activity_id'    => (int)$r['activity_id'],
             'activity_name'  => $r['activity_name'],
             'description'    => $r['description'],
-            'activity_date'  => $r['activity_date'],
+            'activity_date'  => $r['activity_date'],                       // start date
+            'end_date'       => $r['end_date'] ?? null,                    // null on older activities (shown as one day)
+            'start_time'     => !empty($r['start_time']) ? substr($r['start_time'], 0, 5) : null,   // "HH:MM" or null = "Time not set"
+            'end_time'       => !empty($r['end_time']) ? substr($r['end_time'], 0, 5) : null,
             'location'       => $r['location'],
             'max_volunteers' => (int)$r['max_volunteers'],
             'taken'          => (int)$r['taken'],
@@ -152,8 +165,8 @@ if ($method === 'POST') {
     $reqs = requirements_input($pdo) ?? [];
     // Activity and its required skills are saved together: if one part fails, nothing is saved.
     $pdo->beginTransaction();
-    $pdo->prepare('INSERT INTO activities (created_by, activity_name, description, activity_date, location, max_volunteers) VALUES (?, ?, ?, ?, ?, ?)')
-        ->execute([$u['user_id'], $d['name'], $d['desc'] ?: null, $d['date'], $d['loc'] ?: null, $d['max']]);
+    $pdo->prepare('INSERT INTO activities (created_by, activity_name, description, activity_date, end_date, start_time, end_time, location, max_volunteers) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)')
+        ->execute([$u['user_id'], $d['name'], $d['desc'] ?: null, $d['date'], $d['end'], $d['st'], $d['et'], $d['loc'] ?: null, $d['max']]);
     $id = (int)$pdo->lastInsertId();
     save_requirements($pdo, $id, $reqs);
     $pdo->commit();
@@ -168,8 +181,8 @@ $taken = active_assignment_count($pdo, $a['activity_id']);
 if ($d['max'] < $taken) api_error("This activity already has $taken assigned volunteers, so the maximum cannot be lower than that.", 422);
 $reqs = requirements_input($pdo);                              // null = "requirements" not sent: leave them unchanged
 $pdo->beginTransaction();
-$pdo->prepare('UPDATE activities SET activity_name = ?, description = ?, activity_date = ?, location = ?, max_volunteers = ? WHERE activity_id = ?')
-    ->execute([$d['name'], $d['desc'] ?: null, $d['date'], $d['loc'] ?: null, $d['max'], $a['activity_id']]);
+$pdo->prepare('UPDATE activities SET activity_name = ?, description = ?, activity_date = ?, end_date = ?, start_time = ?, end_time = ?, location = ?, max_volunteers = ? WHERE activity_id = ?')
+    ->execute([$d['name'], $d['desc'] ?: null, $d['date'], $d['end'], $d['st'], $d['et'], $d['loc'] ?: null, $d['max'], $a['activity_id']]);
 if ($reqs !== null) save_requirements($pdo, (int)$a['activity_id'], $reqs);
 $pdo->commit();
 api_out(['ok' => true, 'message' => 'Activity updated successfully.', 'activity' => load_activities($pdo, $u, (int)$a['activity_id'])[0]]);
