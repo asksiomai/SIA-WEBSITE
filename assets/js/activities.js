@@ -11,7 +11,6 @@
   const modalEl = document.getElementById('editModal');
   const editError = document.getElementById('editError');
   let activities = [];
-  let sortMode = 'default';
 
   function formData(form) { const o = {}; new FormData(form).forEach(function (v, k) { o[k] = v; }); return o; }
 
@@ -51,12 +50,6 @@
     });
   });
 
-  // Same rules as the server: end date not before start date; same day -> end time later than start time.
-  function checkSchedule(b) {
-    if (b.end_date < b.activity_date) throw new Error('The end date cannot be earlier than the start date.');
-    if (b.end_date === b.activity_date && b.end_time <= b.start_time) throw new Error('For a one-day activity, the end time must be later than the start time.');
-  }
-
   async function load() {
     loading(box);
     try { activities = (await api('api/activities.php')).activities; render(); }
@@ -64,16 +57,16 @@
   }
 
   function render() {
-    const rows = CVMS.sortActivities(activities, sortMode).map(function (a) {
+    const rows = activities.map(function (a) {
       const skills = a.requirements.map(function (r) {
         return '<span class="badge text-bg-light border me-1">' + esc(r.skill_name) + ' · ' + esc(r.required_level) + '</span>';
       }).join('') || '<span class="text-muted">—</span>';
-      return '<tr><td class="fw-semibold">' + esc(a.activity_name) + '</td><td class="text-nowrap">' + esc(CVMS.dateText(a)) + '<div class="small text-muted">' + esc(CVMS.timeText(a)) + '</div></td>' +
+      return '<tr><td class="fw-semibold">' + esc(a.activity_name) + '</td><td class="text-nowrap">' + esc(a.activity_date) + '</td>' +
         '<td>' + esc(a.location || '—') + '</td><td>' + a.taken + ' / ' + a.max_volunteers + '</td><td>' + skills + '</td>' +
         (isSA ? '<td>' + esc(a.created_by_name) + '</td>' : '') +
         '<td class="text-end text-nowrap"><button class="btn btn-sm btn-outline-secondary btn-edit" data-id="' + a.activity_id + '" aria-label="Edit activity"><i class="bi bi-pencil"></i></button></td></tr>';
     }).join('');
-    box.innerHTML = '<table class="table table-hover align-middle"><thead><tr><th>Activity</th><th>Schedule</th><th>Location</th><th>Volunteers</th><th>Required skills</th>' +
+    box.innerHTML = '<table class="table table-hover align-middle"><thead><tr><th>Activity</th><th>Date</th><th>Location</th><th>Volunteers</th><th>Required skills</th>' +
       (isSA ? '<th>Created by</th>' : '') + '<th class="text-end">Actions</th></tr></thead><tbody>' +
       (rows || '<tr><td colspan="7"><div class="empty">No activities yet.</div></td></tr>') + '</tbody></table>';
   }
@@ -83,7 +76,7 @@
     e.preventDefault();
     const btn = createForm.querySelector('button[type=submit]');
     let body;
-    try { body = formData(createForm); checkSchedule(body); body.requirements = readRequirements(createForm); }
+    try { body = formData(createForm); body.requirements = readRequirements(createForm); }
     catch (err) { flash('danger', err.message); return; }
     btn.disabled = true;
     try {
@@ -104,9 +97,6 @@
     editForm.elements.activity_id.value = a.activity_id;
     editForm.elements.activity_name.value = a.activity_name;
     editForm.elements.activity_date.value = a.activity_date || '';
-    editForm.elements.end_date.value = a.end_date || a.activity_date || '';   // older activities: one-day default, the organizer can change it
-    editForm.elements.start_time.value = a.start_time || '';
-    editForm.elements.end_time.value = a.end_time || '';
     editForm.elements.max_volunteers.value = a.max_volunteers;
     editForm.elements.location.value = a.location || '';
     editForm.elements.description.value = a.description || '';
@@ -120,7 +110,7 @@
     e.preventDefault();
     editError.classList.add('d-none');
     let body;
-    try { body = formData(editForm); checkSchedule(body); body.activity_id = Number(body.activity_id); body.requirements = readRequirements(editForm); }
+    try { body = formData(editForm); body.activity_id = Number(body.activity_id); body.requirements = readRequirements(editForm); }
     catch (err) { editError.textContent = err.message; editError.classList.remove('d-none'); return; }
     try {
       const d = await api('api/activities.php', { method: 'PUT', body: body });
@@ -129,6 +119,5 @@
       load();
     } catch (err) { editError.textContent = err.message; editError.classList.remove('d-none'); }
   });
-  CVMS.mountSort(document.getElementById('actSort'), function (mode) { sortMode = mode; render(); });
   load();
 })();

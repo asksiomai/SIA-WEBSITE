@@ -2,8 +2,7 @@
 (function () {
   const { api, flash } = window.CVMS;
   const form = document.getElementById('profileForm');
-  const FIELDS = ['first_name', 'middle_name', 'last_name', 'email', 'phone', 'address', 'other_skills'];
-  const PASSWORD_RULE = /^[A-Za-z0-9.]{8,}$/;     // same rule as the server (the password is never trimmed or changed)
+  const FIELDS = ['first_name', 'middle_name', 'last_name', 'email', 'phone', 'address'];
 
   function fill(v) { FIELDS.forEach(function (k) { form.elements[k].value = v[k] || ''; }); form.elements.new_password.value = ''; }
 
@@ -13,10 +12,6 @@
   form.addEventListener('submit', async function (e) {
     e.preventDefault();
     const body = {}; FIELDS.concat(['new_password']).forEach(function (k) { body[k] = form.elements[k].value; });
-    if (body.new_password !== '' && !PASSWORD_RULE.test(body.new_password)) {
-      flash('danger', 'New password: it must be at least 8 characters and can only contain letters (A-Z, a-z), numbers (0-9) and periods (.). Spaces and other special characters are not allowed.');
-      return;
-    }
     const btn = form.querySelector('button[type=submit]'); btn.disabled = true;
     try {
       const d = await api('api/volunteers.php', { method: 'PUT', body: body });

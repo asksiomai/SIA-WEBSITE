@@ -154,7 +154,7 @@ function recommendation_reasons(array $s) {
 }
 
 // Volunteer side: suggests upcoming activities for ONE volunteer, using the same score_volunteer() formula.
-// READ ONLY: nothing is written to the database and nobody is assigned. Left out: finished activities (end date passed), full activities,
+// READ ONLY: nothing is written to the database and nobody is assigned. Left out: past activities, full activities,
 // activities the volunteer is already assigned to / has completed, and activities that need none of the volunteer's skills.
 function recommend_activities_for_volunteer(PDO $pdo, array $volunteer) {
     $uid = (int)$volunteer['user_id'];
@@ -162,7 +162,7 @@ function recommend_activities_for_volunteer(PDO $pdo, array $volunteer) {
     $st = $pdo->prepare("SELECT a.*,
             (SELECT COUNT(*) FROM assignments s WHERE s.activity_id = a.activity_id AND s.assignment_status IN ('Assigned','Completed')) AS taken
           FROM activities a
-         WHERE COALESCE(a.end_date, a.activity_date) >= ?
+         WHERE a.activity_date >= ?
            AND NOT EXISTS (SELECT 1 FROM assignments m WHERE m.activity_id = a.activity_id AND m.user_id = ? AND m.assignment_status IN ('Assigned','Completed'))
          ORDER BY a.activity_date, a.activity_id");
     $st->execute([date('Y-m-d'), $uid]);
@@ -198,9 +198,6 @@ function recommend_activities_for_volunteer(PDO $pdo, array $volunteer) {
             'activity_name'  => $a['activity_name'],
             'description'    => $a['description'],
             'activity_date'  => $a['activity_date'],
-            'end_date'       => $a['end_date'] ?? null,
-            'start_time'     => !empty($a['start_time']) ? substr($a['start_time'], 0, 5) : null,
-            'end_time'       => !empty($a['end_time']) ? substr($a['end_time'], 0, 5) : null,
             'location'       => $a['location'],
             'max_volunteers' => (int)$a['max_volunteers'],
             'taken'          => (int)$a['taken'],

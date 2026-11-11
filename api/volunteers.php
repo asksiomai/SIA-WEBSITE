@@ -5,7 +5,7 @@
 //   GET    api/volunteers.php?id=3                 -> one volunteer (staff only)
 //   GET    api/volunteers.php?role=organizer       -> Admin / Organizer accounts (Super Admin only)
 //   GET    api/volunteers.php?me=1                 -> my own profile, interests, availability and skills
-//   PUT    api/volunteers.php                      -> Volunteer updates own profile {first_name, ..., email, new_password, other_skills}
+//   PUT    api/volunteers.php                      -> Volunteer updates own profile {first_name, ..., email, new_password}
 //                                                     and/or interests {interests, availability}
 //   PUT    api/volunteers.php                      -> Super Admin changes a role {user_id, role: "organizer" | "volunteer"}
 //                                                     (same account, same user_id: only users.role changes)
@@ -34,7 +34,7 @@ function skills_of(PDO $pdo, array $ids) {
 
 // Users in the JSON shape the frontend uses (explicit column list: the password column is never selected).
 function load_users(PDO $pdo, $where, array $params, $order = 'u.last_name, u.first_name') {
-    $st = $pdo->prepare("SELECT u.user_id, u.last_name, u.first_name, u.middle_name, u.email, u.role, u.phone, u.address, u.interests, u.availability, u.other_skills,
+    $st = $pdo->prepare("SELECT u.user_id, u.last_name, u.first_name, u.middle_name, u.email, u.role, u.phone, u.address, u.interests, u.availability,
                                 (SELECT COUNT(*) FROM activities a WHERE a.created_by = u.user_id) AS activity_count
                            FROM users u WHERE $where ORDER BY $order");
     $st->execute($params);
@@ -43,7 +43,7 @@ function load_users(PDO $pdo, $where, array $params, $order = 'u.last_name, u.fi
     return array_map(fn($r) => [
         'user_id' => (int)$r['user_id'], 'first_name' => $r['first_name'], 'middle_name' => $r['middle_name'], 'last_name' => $r['last_name'],
         'full_name' => full_name($r), 'email' => $r['email'], 'phone' => $r['phone'], 'address' => $r['address'],
-        'interests' => $r['interests'], 'availability' => $r['availability'], 'other_skills' => $r['other_skills'],
+        'interests' => $r['interests'], 'availability' => $r['availability'],
         'role' => $r['role'], 'role_label' => role_label($r['role']), 'activity_count' => (int)$r['activity_count'],
         'skills' => $skills[$r['user_id']] ?? [],
     ], $rows);
@@ -141,14 +141,10 @@ if (array_key_exists('email', $in)) {                          // profile sectio
     $st = $pdo->prepare('SELECT COUNT(*) FROM users WHERE email = ? AND user_id <> ?'); $st->execute([$d['email'], $uid]);
     if ($st->fetchColumn() > 0) api_error('Email is already registered.', 409);
     if ($new !== '' && ($pwError = password_error($new))) api_error('New password: ' . $pwError, 422);
-    $hasOther = array_key_exists('other_skills', $in);                 // optional free-text "Other Skills" (separate from official skills)
-    $other = null;
-    if ($hasOther) { [$other, $otherError] = normalize_other_skills($in['other_skills']); if ($otherError) api_error($otherError, 422); }
 
     $pdo->prepare('UPDATE users SET first_name = ?, middle_name = ?, last_name = ?, email = ?, phone = ?, address = ? WHERE user_id = ?')
         ->execute([$d['first_name'], $d['middle_name'] ?: null, $d['last_name'], $d['email'], $d['phone'] ?: null, $d['address'] ?: null, $uid]);
     if ($new !== '') $pdo->prepare('UPDATE users SET password = ? WHERE user_id = ?')->execute([password_hash($new, PASSWORD_DEFAULT), $uid]);
-    if ($hasOther) $pdo->prepare('UPDATE users SET other_skills = ? WHERE user_id = ?')->execute([$other, $uid]);
     $touched = true;
 }
 if (array_key_exists('interests', $in) || array_key_exists('availability', $in)) {      // interests section

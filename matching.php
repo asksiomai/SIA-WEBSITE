@@ -5,7 +5,7 @@ $u = require_role(['super_admin', 'organizer']);
 $a = find_activity($pdo, $u, $_GET['activity_id'] ?? 0);
 
 $pageTitle = 'AI Volunteer Matching';
-$pageSub = $a ? $a['activity_name'] . ' · ' . schedule_text($a) : 'Choose an activity to see recommended volunteers.';
+$pageSub = $a ? $a['activity_name'] . ' · ' . $a['activity_date'] : 'Choose an activity to see recommended volunteers.';
 require __DIR__ . '/includes/header.php';
 if (!$a) { activity_picker(visible_activities($pdo, $u), 'matching.php', 'Matching uses the required skills set on each activity.'); require __DIR__ . '/includes/footer.php'; exit; }
 
