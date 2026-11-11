@@ -9,7 +9,7 @@ $u = require_role(['super_admin', 'organizer']);
 $a = find_activity($pdo, $u, $_GET['activity_id'] ?? 0);
 
 $pageTitle = 'Manage Attendance';
-$pageSub = $a ? $a['activity_name'] . ' · ' . $a['activity_date'] : 'Choose an activity to record attendance.';
+$pageSub = $a ? $a['activity_name'] . ' · ' . schedule_text($a) : 'Choose an activity to record attendance.';
 require __DIR__ . '/includes/header.php';
 if (!$a) { activity_picker(visible_activities($pdo, $u), 'attendance.php', 'Attendance is recorded for volunteers who are assigned to the activity.'); require __DIR__ . '/includes/footer.php'; exit; }
 ?>

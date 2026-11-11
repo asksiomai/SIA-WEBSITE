@@ -29,17 +29,80 @@ function asset($path)
     $file = __DIR__ . '/../' . $path;
     return $path . (is_file($file) ? '?v=' . filemtime($file) : '');
 }
-// One password rule for registration and "change password": at least 8 characters, and not only spaces.
-// Letters, numbers, symbols and spaces are all allowed. The password is never trimmed or changed.
+// One password rule for registration and "change password": at least 8 characters, and ONLY
+// letters (A-Z, a-z), numbers (0-9) and periods (.). Spaces and every other symbol are rejected.
+// The password is never trimmed, cleaned or changed: it is either accepted exactly as typed, or rejected.
+// Same rule as the browser check: ^[A-Za-z0-9.]{8,}$   (\z = real end of text, so a trailing new line is not allowed either)
+const PASSWORD_CHARS_MESSAGE = 'Password can only contain letters (A-Z, a-z), numbers (0-9) and periods (.). Spaces and other special characters are not allowed.';
 function password_error($password)
 {
     $password = (string) $password;
-    $length = function_exists('mb_strlen') ? mb_strlen($password, 'UTF-8') : strlen($password);
-    if ($length < 8)
+    if (preg_match('/[^A-Za-z0-9.]/', $password))
+        return PASSWORD_CHARS_MESSAGE;
+    if (strlen($password) < 8)
         return 'Password must be at least 8 characters.';
-    if (trim($password) === '')       // only used for this check; the password itself is not trimmed
-        return 'Password cannot be made of spaces only.';
     return null;
+}
+// "Other Skills" (free text typed by a volunteer; NOT part of the official skills list and NOT used by AI matching).
+// Accepts commas or new lines between skills. Returns [normalized text or null, error message or null].
+function normalize_other_skills($raw)
+{
+    $items = [];
+    $seen = [];
+    foreach (preg_split('/[,\r\n]+/', (string) $raw) as $part) {
+        $part = trim(preg_replace('/\s+/', ' ', $part));
+        if ($part === '')
+            continue;
+        $len = function_exists('mb_strlen') ? mb_strlen($part, 'UTF-8') : strlen($part);
+        if ($len > 60)
+            return [null, 'Each other skill must be 60 characters or fewer.'];
+        $key = function_exists('mb_strtolower') ? mb_strtolower($part, 'UTF-8') : strtolower($part);
+        if (isset($seen[$key]))
+            continue;
+        $seen[$key] = true;
+        $items[] = $part;
+    }
+    if (count($items) > 20)
+        return [null, 'Please list at most 20 other skills.'];
+    return [$items ? implode(', ', $items) : null, null];
+}
+// ---- Activity schedule helpers: start date (activity_date), end date, start time, end time ----
+// "8:00 AM" style clock text, or null when no time is saved.
+function format_clock($t)
+{
+    if (!$t)
+        return null;
+    $ts = strtotime('2000-01-01 ' . $t);
+    return $ts ? ltrim(date('h:i A', $ts), '0') : null;
+}
+// "November 15, 2026" / "November 15–17, 2026" / "November 30 – December 2, 2026" / across years.
+// Older activities without an end date are shown as a single day.
+function format_date_range($start, $end)
+{
+    $s = $start ? strtotime($start) : false;
+    if (!$s)
+        return 'No date';
+    $e = $end ? strtotime($end) : false;
+    if (!$e || $e <= $s)
+        return date('F j, Y', $s);
+    if (date('Y-m', $s) === date('Y-m', $e))
+        return date('F j', $s) . '–' . date('j, Y', $e);
+    if (date('Y', $s) === date('Y', $e))
+        return date('F j', $s) . ' – ' . date('F j, Y', $e);
+    return date('F j, Y', $s) . ' – ' . date('F j, Y', $e);
+}
+function format_time_range($start, $end)
+{
+    $a = format_clock($start);
+    $b = format_clock($end);
+    if ($a && $b)
+        return $a . ' – ' . $b;
+    return $a ?: ($b ?: 'Time not set');
+}
+// One line for pages that print a plain-text schedule.
+function schedule_text(array $a)
+{
+    return format_date_range($a['activity_date'] ?? null, $a['end_date'] ?? null) . ' · ' . format_time_range($a['start_time'] ?? null, $a['end_time'] ?? null);
 }
 function csrf_token()
 {
@@ -130,7 +193,7 @@ function activity_picker(array $acts, $page, $hint)
     echo '<div class="list-group list-group-flush">';
     foreach ($acts as $a) {
         echo '<a class="list-group-item list-group-item-action d-flex justify-content-between align-items-center" href="' . h($page) . '?activity_id=' . (int) $a['activity_id'] . '">'
-            . '<span><strong>' . h($a['activity_name']) . '</strong><br><small class="text-muted">' . h($a['activity_date'] ?: 'No date') . ' &middot; ' . h($a['location'] ?: 'No location') . '</small></span>'
+            . '<span><strong>' . h($a['activity_name']) . '</strong><br><small class="text-muted">' . h(schedule_text($a)) . ' &middot; ' . h($a['location'] ?: 'No location') . '</small></span>'
             . '<i class="bi bi-chevron-right"></i></a>';
     }
     echo '</div></div></div>';

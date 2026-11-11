@@ -8,7 +8,7 @@
     const b = r.breakdown;
     return '<div class="rec-card"><div class="row align-items-center g-3">' +
       '<div class="col-md-7"><div class="fw-semibold">' + esc(r.activity_name) + '</div>' +
-      '<div class="small text-muted mb-2"><i class="bi bi-calendar-event"></i> ' + esc(r.activity_date) + ' &nbsp; <i class="bi bi-geo-alt"></i> ' + esc(r.location || 'No location') + '</div>' +
+      '<div class="small text-muted mb-2"><i class="bi bi-calendar-event"></i> ' + esc(CVMS.dateText(r)) + ' &nbsp; <i class="bi bi-clock"></i> ' + esc(CVMS.timeText(r)) + ' &nbsp; <i class="bi bi-geo-alt"></i> ' + esc(r.location || 'No location') + '</div>' +
       CVMS.skillBadges(r.requirements) +
       '<div class="small text-muted text-uppercase mt-3 mb-1">Why this is suggested</div>' +
       '<ul class="small mb-2 ps-3">' + r.reasons.map(function (x) { return '<li>' + esc(x) + '</li>'; }).join('') + '</ul>' +

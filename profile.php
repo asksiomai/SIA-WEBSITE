@@ -17,7 +17,8 @@ require __DIR__ . '/includes/header.php';
     <div class="col-md-6"><label class="form-label">Email (login) *</label><input class="form-control" type="email" name="email" maxlength="100" required></div>
     <div class="col-md-6"><label class="form-label">Phone</label><input class="form-control" name="phone" maxlength="20"></div>
     <div class="col-12"><label class="form-label">Address</label><input class="form-control" name="address" maxlength="255"></div>
-    <div class="col-md-6"><label class="form-label">New password <small class="text-muted">(leave blank to keep current)</small></label><input class="form-control" type="password" name="new_password" autocomplete="new-password"></div>
+    <div class="col-md-6"><label class="form-label">New password <small class="text-muted">(leave blank to keep current)</small></label><input class="form-control" type="password" name="new_password" pattern="[A-Za-z0-9.]{8,}" title="At least 8 characters. Only letters (A-Z, a-z), numbers (0-9) and periods (.) are allowed." autocomplete="new-password"><div class="form-text">At least 8 characters: letters, numbers and periods (.) only. No spaces or other symbols.</div></div>
+    <div class="col-12"><label class="form-label">Other skills <small class="text-muted">(optional)</small></label><textarea class="form-control" name="other_skills" rows="3" maxlength="1000" placeholder="e.g. Janitor, Bartender, House Painter"></textarea><div class="form-text">Skills that are not in the official skills list. Separate them with commas or put each on a new line. They are shown to organizers but are not used in AI matching scores.</div></div>
   </div>
   <button class="btn btn-primary mt-4" type="submit">Save Profile</button>
 </fieldset></form></div></div>

@@ -12,7 +12,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     if ($f['first_name'] === '' || $f['last_name'] === '') $errors[] = 'First name and last name are required.';
     if (!filter_var($f['email'], FILTER_VALIDATE_EMAIL)) $errors[] = 'Please enter a valid email address.';
-    if ($pwError = password_error($password)) $errors[] = $pwError;    // letters, numbers, symbols and spaces are all allowed
+    if ($pwError = password_error($password)) $errors[] = $pwError;    // letters, numbers and periods only (see password_error())
     if ($password !== $confirm) $errors[] = 'Passwords do not match.';
     if (empty($_POST['agree'])) $errors[] = 'You must agree to the Terms & Privacy Policy to create an account.';
 
@@ -56,10 +56,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
           <div class="col-md-4"><label class="form-label">Middle name</label><input class="form-control" name="middle_name" value="<?= h($f['middle_name']) ?>"></div>
           <div class="col-md-4"><label class="form-label">Last name *</label><input class="form-control" name="last_name" value="<?= h($f['last_name']) ?>" required></div>
           <div class="col-md-6"><label class="form-label">Email (used to log in) *</label><input class="form-control" type="email" name="email" value="<?= h($f['email']) ?>" required></div>
-          <div class="col-md-6"><label class="form-label">Contact number</label><input class="form-control" name="phone" value="<?= h($f['phone']) ?>"></div>
+          <div class="col-md-6"><label class="form-label">Phone</label><input class="form-control" name="phone" value="<?= h($f['phone']) ?>"></div>
           <div class="col-12"><label class="form-label">Address</label><input class="form-control" name="address" value="<?= h($f['address']) ?>"></div>
-          <div class="col-md-6"><label class="form-label">Password * <small class="text-muted">(min. 8 characters; symbols and spaces allowed)</small></label><input class="form-control" type="password" name="password" required></div>
-          <div class="col-md-6"><label class="form-label">Confirm password *</label><input class="form-control" type="password" name="confirm" required></div>
+          <div class="col-md-6"><label class="form-label">Password * <small class="text-muted">(min. 8 characters; letters, numbers and periods only)</small></label><input class="form-control" type="password" name="password" id="regPassword" pattern="[A-Za-z0-9.]{8,}" title="At least 8 characters. Only letters (A-Z, a-z), numbers (0-9) and periods (.) are allowed. No spaces or other special characters." autocomplete="new-password" required><div class="form-text">Allowed: A–Z, a–z, 0–9 and the period (.). No spaces or other symbols.</div></div>
+          <div class="col-md-6"><label class="form-label">Confirm password *</label><input class="form-control" type="password" name="confirm" autocomplete="new-password" required></div>
         </div>
         <div class="form-check mt-3">
           <input class="form-check-input" type="checkbox" name="agree" id="agree" value="1" <?= !empty($_POST['agree']) ? 'checked' : '' ?> required>
@@ -72,4 +72,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   </section>
 </div>
 <?php require __DIR__ . '/includes/site_footer.php'; ?>
+<script>
+// Browser check of the same rule as the server: ^[A-Za-z0-9.]{8,}$ (the password is never trimmed or changed).
+(function () {
+  var pw = document.getElementById('regPassword');
+  var MSG = 'Password must be at least 8 characters and can only contain letters (A-Z, a-z), numbers (0-9) and periods (.). Spaces and other special characters are not allowed.';
+  function check() { pw.setCustomValidity(/^[A-Za-z0-9.]{8,}$/.test(pw.value) ? '' : MSG); }
+  pw.addEventListener('input', check);
+  check();
+})();
+</script>
 </body></html>

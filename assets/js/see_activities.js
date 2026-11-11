@@ -4,16 +4,22 @@
   const { api, esc, loading } = window.CVMS;
   const box = document.getElementById('actCards');
   let activities = [];
+  let sortMode = 'default';
+
+  function render() {
+    box.innerHTML = CVMS.sortActivities(activities, sortMode).map(function (a) {
+      const badge = (a.is_mine ? '<span class="badge text-bg-primary me-1">Yours</span>' : '') +
+                    (CVMS.activityState(a) === 'Past' ? '<span class="badge text-bg-light border">Past</span>' : '');
+      return CVMS.activityCardHtml(a, badge, a.taken + ' / ' + a.max_volunteers + ' volunteers');
+    }).join('');
+  }
+  CVMS.mountSort(document.getElementById('actSort'), function (mode) { sortMode = mode; if (activities.length) render(); });
 
   loading(box);
   api('api/activities.php?scope=all').then(function (d) {
     activities = d.activities;
     if (!activities.length) { box.innerHTML = '<div class="col-12"><div class="card"><div class="empty">No activities have been created yet.</div></div></div>'; return; }
-    box.innerHTML = activities.map(function (a) {
-      const badge = (a.is_mine ? '<span class="badge text-bg-primary me-1">Yours</span>' : '') +
-                    (CVMS.activityState(a) === 'Past' ? '<span class="badge text-bg-light border">Past</span>' : '');
-      return CVMS.activityCardHtml(a, badge, a.taken + ' / ' + a.max_volunteers + ' volunteers');
-    }).join('');
+    render();
   }).catch(function (e) { box.innerHTML = '<div class="col-12"><div class="alert alert-danger">' + esc(e.message) + '</div></div>'; });
 
   CVMS.makeCardsClickable(box, function (id) {
