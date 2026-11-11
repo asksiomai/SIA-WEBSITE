@@ -17,6 +17,7 @@ if ($u['role'] === 'volunteer') {
     try {
         echo json_encode(['ok' => true] + recommend_activities_for_volunteer($pdo, $u));
     } catch (Throwable $e) {
+        error_log('CVMS recommendations (volunteer) error: ' . get_class($e) . ': ' . $e->getMessage() . ' @ ' . $e->getFile() . ':' . $e->getLine());
         http_response_code(500);
         echo json_encode(['ok' => false, 'error' => 'Recommendations could not be loaded.']);
     }
@@ -35,6 +36,7 @@ try {
     echo json_encode(['ok' => true, 'generated' => $_SERVER['REQUEST_METHOD'] === 'POST',
                       'recommendations' => get_recommendations($pdo, $a['activity_id'], $breakdown)]);
 } catch (Throwable $e) {
+    error_log('CVMS recommendations (organizer) error: ' . get_class($e) . ': ' . $e->getMessage() . ' @ ' . $e->getFile() . ':' . $e->getLine());
     if ($pdo->inTransaction()) $pdo->rollBack();
     http_response_code(500);
     echo json_encode(['ok' => false, 'error' => 'Recommendations could not be generated.']);

@@ -41,8 +41,10 @@ function api_methods(array $allowed)
 }
 
 // Any uncaught error becomes a clean JSON 500 (details are not shown to the user).
+// The real cause is written to the server error log (cPanel > Errors / error_log) so it can be found.
 set_exception_handler(function ($e) {
     global $pdo;
+    error_log('CVMS API error in ' . ($_SERVER['SCRIPT_NAME'] ?? '') . ': ' . get_class($e) . ': ' . $e->getMessage() . ' @ ' . $e->getFile() . ':' . $e->getLine());
     if (isset($pdo) && $pdo->inTransaction())
         $pdo->rollBack();
     api_error('The request could not be completed.', 500);

@@ -43,6 +43,19 @@ function password_error($password)
         return 'Password must be at least 8 characters.';
     return null;
 }
+// Does this table have this column? Used so the volunteer pages keep working on a database that has not had
+// migrations/001_schedule_and_other_skills.sql applied yet (users.other_skills, activities.end_date).
+// Table and column names are our own constants, never user input. The answer is cached for the request.
+function db_has_column(PDO $pdo, $table, $column)
+{
+    static $cache = [];
+    $key = $table . '.' . $column;
+    if (!isset($cache[$key])) {
+        $st = $pdo->query('SHOW COLUMNS FROM `' . str_replace('`', '', $table) . '` LIKE ' . $pdo->quote($column));
+        $cache[$key] = (bool) $st->fetch();
+    }
+    return $cache[$key];
+}
 // "Other Skills" (free text typed by a volunteer; NOT part of the official skills list and NOT used by AI matching).
 // Accepts commas or new lines between skills. Returns [normalized text or null, error message or null].
 function normalize_other_skills($raw)

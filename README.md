@@ -7,7 +7,7 @@
 4. Optional demo data: import `database_seed_demo.sql` (rows only; the schema is untouched).
 5. Open `http://localhost/cvms/`.
 
-**Before using this version on an existing database, run `migrations/001_schedule_and_other_skills.sql`** (back up first; see the comments inside the file).
+**Before using this version on an existing database, run `migrations/001_schedule_and_other_skills.sql`** (back up first; see the comments inside the file). The Volunteer pages still open without it (they fall back gracefully), but **Other Skills cannot be saved and multi-day activities / times are not available until it has been run.** `migrations/` is not uploaded by the GitHub deploy, so it has to be run by hand in phpMyAdmin.
 
 Demo logins (password `password123`): superadmin@cvms.local, organizer@cvms.local, juan@cvms.local, ana@cvms.local, mark@cvms.local, carla@cvms.local, paolo@cvms.local.
 
@@ -21,7 +21,8 @@ Without the demo data there is no Super Admin: register a volunteer, then in php
 - Volunteer extras: AI Recommendations `my_recommendations.php` (same matching formula, read only) · Achievements `my_achievements.php` (badges calculated from real attendance)
 - Passwords: 8+ characters, only letters, numbers and periods (`^[A-Za-z0-9.]{8,}$`), checked in the browser and on the server (`password_error()` in `includes/functions.php`). Login never trims or changes the typed password, so older accounts still work.
 - Activity schedule: `activity_date` is the Start date; `end_date`, `start_time`, `end_time` were added (all required in Create / Edit Activity). Older activities show "Time not set" until edited. Sorting on the activity pages is done in the browser (`CVMS.sortActivities` in `assets/js/app.js`).
-- Volunteer "Other Skills" (`users.other_skills`, free text on Manage Profile, shown to organizers in Manage Volunteers; NOT used by AI matching).
+- Volunteer "Add Skills" (`my_skills.php`) has two parts on ONE page: **Official Skills** (`skills` list + `volunteer_skills`, proficiency level, used by AI matching) and **Other Skills** (optional free text in `users.other_skills`, shown to organizers in Manage Volunteers; not verified, not added to `skills`, NOT used by AI matching). Manage Profile only holds personal and contact information.
+- Errors: when an API call fails the page shows a short message and the real cause is written to the server error log (cPanel > Errors / `error_log`).
 - Assign / cancel: `assign.php` · Attendance: `attendance.php` · Reports: `reports.php`
 
 ## REST-style API (all endpoints need a login session; the CSRF token is sent in the `X-CSRF-Token` header; no password is ever returned)

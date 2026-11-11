@@ -2,7 +2,7 @@
 (function () {
   const { api, flash } = window.CVMS;
   const form = document.getElementById('profileForm');
-  const FIELDS = ['first_name', 'middle_name', 'last_name', 'email', 'phone', 'address', 'other_skills'];
+  const FIELDS = ['first_name', 'middle_name', 'last_name', 'email', 'phone', 'address'];     // Other Skills now live on the Add Skills page
   const PASSWORD_RULE = /^[A-Za-z0-9.]{8,}$/;     // same rule as the server (the password is never trimmed or changed)
 
   function fill(v) { FIELDS.forEach(function (k) { form.elements[k].value = v[k] || ''; }); form.elements.new_password.value = ''; }

@@ -5,8 +5,9 @@
 //   GET    api/volunteers.php?id=3                 -> one volunteer (staff only)
 //   GET    api/volunteers.php?role=organizer       -> Admin / Organizer accounts (Super Admin only)
 //   GET    api/volunteers.php?me=1                 -> my own profile, interests, availability and skills
-//   PUT    api/volunteers.php                      -> Volunteer updates own profile {first_name, ..., email, new_password, other_skills}
+//   PUT    api/volunteers.php                      -> Volunteer updates own profile {first_name, ..., email, new_password}
 //                                                     and/or interests {interests, availability}
+//                                                     and/or Other Skills {other_skills} (free text, saved in users.other_skills; Add Skills page)
 //   PUT    api/volunteers.php                      -> Super Admin changes a role {user_id, role: "organizer" | "volunteer"}
 //                                                     (same account, same user_id: only users.role changes)
 //   POST   api/volunteers.php?resource=skills      -> Volunteer adds / updates own skill {skill_id, proficiency_level}
@@ -34,7 +35,9 @@ function skills_of(PDO $pdo, array $ids) {
 
 // Users in the JSON shape the frontend uses (explicit column list: the password column is never selected).
 function load_users(PDO $pdo, $where, array $params, $order = 'u.last_name, u.first_name') {
-    $st = $pdo->prepare("SELECT u.user_id, u.last_name, u.first_name, u.middle_name, u.email, u.role, u.phone, u.address, u.interests, u.availability, u.other_skills,
+    // users.other_skills only exists after migrations/001 has been run; without it the list is simply empty (instead of the whole request failing).
+    $other = db_has_column($pdo, 'users', 'other_skills') ? 'u.other_skills' : 'NULL AS other_skills';
+    $st = $pdo->prepare("SELECT u.user_id, u.last_name, u.first_name, u.middle_name, u.email, u.role, u.phone, u.address, u.interests, u.availability, $other,
                                 (SELECT COUNT(*) FROM activities a WHERE a.created_by = u.user_id) AS activity_count
                            FROM users u WHERE $where ORDER BY $order");
     $st->execute($params);
@@ -141,14 +144,9 @@ if (array_key_exists('email', $in)) {                          // profile sectio
     $st = $pdo->prepare('SELECT COUNT(*) FROM users WHERE email = ? AND user_id <> ?'); $st->execute([$d['email'], $uid]);
     if ($st->fetchColumn() > 0) api_error('Email is already registered.', 409);
     if ($new !== '' && ($pwError = password_error($new))) api_error('New password: ' . $pwError, 422);
-    $hasOther = array_key_exists('other_skills', $in);                 // optional free-text "Other Skills" (separate from official skills)
-    $other = null;
-    if ($hasOther) { [$other, $otherError] = normalize_other_skills($in['other_skills']); if ($otherError) api_error($otherError, 422); }
-
     $pdo->prepare('UPDATE users SET first_name = ?, middle_name = ?, last_name = ?, email = ?, phone = ?, address = ? WHERE user_id = ?')
         ->execute([$d['first_name'], $d['middle_name'] ?: null, $d['last_name'], $d['email'], $d['phone'] ?: null, $d['address'] ?: null, $uid]);
     if ($new !== '') $pdo->prepare('UPDATE users SET password = ? WHERE user_id = ?')->execute([password_hash($new, PASSWORD_DEFAULT), $uid]);
-    if ($hasOther) $pdo->prepare('UPDATE users SET other_skills = ? WHERE user_id = ?')->execute([$other, $uid]);
     $touched = true;
 }
 if (array_key_exists('interests', $in) || array_key_exists('availability', $in)) {      // interests section
@@ -156,6 +154,16 @@ if (array_key_exists('interests', $in) || array_key_exists('availability', $in))
     $availability = trim((string)($in['availability'] ?? ''));
     if (strlen($availability) > 255) api_error('Availability is too long (255 characters max).', 422);
     $pdo->prepare('UPDATE users SET interests = ?, availability = ? WHERE user_id = ?')->execute([$interests ?: null, $availability ?: null, $uid]);
+    $touched = true;
+}
+if (array_key_exists('other_skills', $in)) {                  // "Other Skills" (Add Skills page): free text, NOT part of the official skills list, NOT used by AI matching
+    $raw = (string)$in['other_skills'];
+    if (strlen($raw) > 3000) api_error('Other skills is too long. Please list at most 20 skills of 60 characters each.', 422);
+    [$other, $otherError] = normalize_other_skills($raw);
+    if ($otherError) api_error($otherError, 422);
+    if (!db_has_column($pdo, 'users', 'other_skills'))
+        api_error('Other Skills cannot be saved yet: the database is missing the users.other_skills column. Please run migrations/001_schedule_and_other_skills.sql once (see README).', 503);
+    $pdo->prepare('UPDATE users SET other_skills = ? WHERE user_id = ?')->execute([$other, $uid]);
     $touched = true;
 }
 if (!$touched) api_error('Nothing to update.', 422);

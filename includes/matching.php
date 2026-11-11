@@ -159,10 +159,12 @@ function recommendation_reasons(array $s) {
 function recommend_activities_for_volunteer(PDO $pdo, array $volunteer) {
     $uid = (int)$volunteer['user_id'];
 
+    // Last day of an activity: end_date when the column exists (migration 001), otherwise the single activity_date.
+    $lastDay = db_has_column($pdo, 'activities', 'end_date') ? 'COALESCE(a.end_date, a.activity_date)' : 'a.activity_date';
     $st = $pdo->prepare("SELECT a.*,
             (SELECT COUNT(*) FROM assignments s WHERE s.activity_id = a.activity_id AND s.assignment_status IN ('Assigned','Completed')) AS taken
           FROM activities a
-         WHERE COALESCE(a.end_date, a.activity_date) >= ?
+         WHERE $lastDay >= ?
            AND NOT EXISTS (SELECT 1 FROM assignments m WHERE m.activity_id = a.activity_id AND m.user_id = ? AND m.assignment_status IN ('Assigned','Completed'))
          ORDER BY a.activity_date, a.activity_id");
     $st->execute([date('Y-m-d'), $uid]);
