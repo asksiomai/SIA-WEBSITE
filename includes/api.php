@@ -47,6 +47,9 @@ set_exception_handler(function ($e) {
     error_log('CVMS API error in ' . ($_SERVER['SCRIPT_NAME'] ?? '') . ': ' . get_class($e) . ': ' . $e->getMessage() . ' @ ' . $e->getFile() . ':' . $e->getLine());
     if (isset($pdo) && $pdo->inTransaction())
         $pdo->rollBack();
+    // Set `const CVMS_DEBUG = true;` in config/db.php (temporarily) to see the real cause in the response.
+    if (defined('CVMS_DEBUG') && CVMS_DEBUG)
+        api_out(['ok' => false, 'error' => 'The request could not be completed. [' . get_class($e) . ': ' . $e->getMessage() . ']'], 500);
     api_error('The request could not be completed.', 500);
 });
 

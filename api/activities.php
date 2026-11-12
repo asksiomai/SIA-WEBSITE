@@ -42,6 +42,35 @@ function activity_input() {
     return $d;
 }
 
+// ---- Database structure checks -------------------------------------------------------------------
+// The code below used to assume (a) migrations/001 had been run and (b) the primary key of activity_requirements
+// is called "requirement_id". Neither is guaranteed (migrations/ is NOT deployed by GitHub, and the original
+// volunteer_management.sql is not part of this project), and a wrong guess surfaced only as the generic
+// "The request could not be completed." So the structure is now checked, and a clear message is given.
+
+// Primary-key column of activity_requirements when it has a single-column key, else null.
+function req_pk(PDO $pdo) {
+    static $pk = false;
+    if ($pk !== false) return $pk;
+    $pk = null;
+    $rows = $pdo->query("SHOW KEYS FROM `activity_requirements` WHERE Key_name = 'PRIMARY'")->fetchAll();
+    if (count($rows) === 1) $pk = preg_replace('/[^A-Za-z0-9_]/', '', $rows[0]['Column_name']);
+    return $pk ?: null;
+}
+
+// Create / edit write the schedule columns; stop with an explanation (not a hidden failure) when they are missing.
+function require_schedule_columns(PDO $pdo) {
+    $missing = [];
+    foreach (['end_date', 'start_time', 'end_time'] as $c) {
+        if (!db_has_column($pdo, 'activities', $c)) $missing[] = $c;
+    }
+    if ($missing) {
+        error_log('CVMS: activities table is missing column(s): ' . implode(', ', $missing) . ' - run migrations/001_schedule_and_other_skills.sql');
+        api_error('The database has not been updated yet: the activities table has no ' . implode(', ', $missing)
+                  . ' column. Run migrations/001_schedule_and_other_skills.sql in phpMyAdmin, then try again.', 500);
+    }
+}
+
 // Reads the optional "requirements" list [{skill_id, required_level}, ...] from the request body.
 // Returns null when the field was not sent (existing requirements stay as they are), otherwise a validated list.
 function requirements_input(PDO $pdo) {
@@ -72,21 +101,30 @@ function requirements_input(PDO $pdo) {
 // Makes the activity_requirements rows of one activity match $reqs. Existing rows keep their requirement_id
 // (level updated), new skills are inserted, skills that were removed from the list are deleted.
 function save_requirements(PDO $pdo, $activity_id, array $reqs) {
-    $st = $pdo->prepare('SELECT requirement_id, skill_id FROM activity_requirements WHERE activity_id = ? ORDER BY requirement_id');
+    $pk = req_pk($pdo);
+    if ($pk === null) {
+        // No single-column primary key to keep stable: replace the activity's rows with the submitted list.
+        $pdo->prepare('DELETE FROM activity_requirements WHERE activity_id = ?')->execute([$activity_id]);
+        foreach ($reqs as $r) {
+            $pdo->prepare('INSERT INTO activity_requirements (activity_id, skill_id, required_level) VALUES (?, ?, ?)')->execute([$activity_id, $r['skill_id'], $r['required_level']]);
+        }
+        return;
+    }
+    $st = $pdo->prepare("SELECT `$pk` AS rid, skill_id FROM activity_requirements WHERE activity_id = ? ORDER BY `$pk`");
     $st->execute([$activity_id]);
     $have = [];
-    foreach ($st->fetchAll() as $r) $have[(int)$r['skill_id']][] = (int)$r['requirement_id'];
+    foreach ($st->fetchAll() as $r) $have[(int)$r['skill_id']][] = $r['rid'];
 
     foreach ($reqs as $r) {
         if (!empty($have[$r['skill_id']])) {
             $rid = array_shift($have[$r['skill_id']]);
-            $pdo->prepare('UPDATE activity_requirements SET required_level = ? WHERE requirement_id = ?')->execute([$r['required_level'], $rid]);
+            $pdo->prepare("UPDATE activity_requirements SET required_level = ? WHERE `$pk` = ?")->execute([$r['required_level'], $rid]);
         } else {
             $pdo->prepare('INSERT INTO activity_requirements (activity_id, skill_id, required_level) VALUES (?, ?, ?)')->execute([$activity_id, $r['skill_id'], $r['required_level']]);
         }
     }
     foreach ($have as $ids) {                                // whatever is left was removed in the form
-        foreach ($ids as $rid) $pdo->prepare('DELETE FROM activity_requirements WHERE requirement_id = ? AND activity_id = ?')->execute([$rid, $activity_id]);
+        foreach ($ids as $rid) $pdo->prepare("DELETE FROM activity_requirements WHERE `$pk` = ? AND activity_id = ?")->execute([$rid, $activity_id]);
     }
 }
 
@@ -114,7 +152,9 @@ function load_activities(PDO $pdo, array $u, $one = 0, $all = false) {
     $reqs = [];
     if ($rows) {
         $ids = implode(',', array_map(fn($r) => (int)$r['activity_id'], $rows));   // integers from our own query
-        foreach ($pdo->query("SELECT r.requirement_id, r.activity_id, r.skill_id, r.required_level, s.skill_name
+        $pk = req_pk($pdo);
+        $pkSql = $pk ? "r.`$pk`" : '0';
+        foreach ($pdo->query("SELECT $pkSql AS requirement_id, r.activity_id, r.skill_id, r.required_level, s.skill_name
                                 FROM activity_requirements r JOIN skills s ON s.skill_id = r.skill_id
                                WHERE r.activity_id IN ($ids) ORDER BY s.skill_name") as $r) {
             $reqs[$r['activity_id']][] = ['requirement_id' => (int)$r['requirement_id'], 'skill_id' => (int)$r['skill_id'],
@@ -161,6 +201,7 @@ if ($method === 'GET') {
 if (!$isStaff) api_error('Not allowed.', 403);
 
 if ($method === 'POST') {
+    require_schedule_columns($pdo);
     $d = activity_input();
     $reqs = requirements_input($pdo) ?? [];
     // Activity and its required skills are saved together: if one part fails, nothing is saved.
@@ -174,6 +215,7 @@ if ($method === 'POST') {
 }
 
 // PUT
+require_schedule_columns($pdo);
 $a = find_activity($pdo, $u, api_input()['activity_id'] ?? 0);
 if (!$a) api_error('Activity not found.', 404);
 $d = activity_input();
